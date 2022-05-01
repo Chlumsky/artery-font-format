@@ -52,7 +52,7 @@ struct FontVariant {
 };
 
 template <class BYTE_ARRAY, class STRING>
-struct Image {
+struct FontImage {
     uint32 flags;
     ImageEncoding encoding;
     uint32 width, height;
@@ -70,18 +70,21 @@ struct Image {
 };
 
 template <class BYTE_ARRAY, class STRING>
-struct Appendix {
+struct FontAppendix {
     STRING metadata;
     BYTE_ARRAY data;
 };
 
 template <typename REAL, template <typename> class LIST, class BYTE_ARRAY, class STRING>
 struct ArteryFont {
+    typedef FontVariant<REAL, LIST, STRING> Variant;
+    typedef FontImage<BYTE_ARRAY, STRING> Image;
+    typedef FontAppendix<BYTE_ARRAY, STRING> Appendix;
     MetadataFormat metadataFormat;
     STRING metadata;
-    LIST<FontVariant<REAL, LIST, STRING> > variants;
-    LIST<Image<BYTE_ARRAY, STRING> > images;
-    LIST<Appendix<BYTE_ARRAY, STRING> > appendices;
+    LIST<Variant> variants;
+    LIST<Image> images;
+    LIST<Appendix> appendices;
 };
 
 }

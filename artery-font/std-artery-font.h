@@ -8,30 +8,26 @@
 namespace artery_font {
 
 template <typename T>
-class StdList {
+class StdList : private std::vector<T> {
 
 public:
-    std::vector<T> vector;
-
-    StdList() { }
-    explicit StdList(int length) : vector((size_t) length) { }
-    int length() const { return (int) vector.size(); }
-    explicit operator T *() { return vector.data(); }
-    explicit operator const T *() const { return vector.data(); }
-    T & operator[](int index) { return vector[index]; }
-    const T & operator[](int index) const { return vector[index]; }
+    inline StdList() { }
+    inline explicit StdList(int length) : std::vector<T>((size_t) length) { }
+    inline int length() const { return (int) std::vector<T>::size(); }
+    inline explicit operator T *() { return std::vector<T>::data(); }
+    inline explicit operator const T *() const { return std::vector<T>::data(); }
+    inline T & operator[](int index) { return std::vector<T>::operator[](index); }
+    inline const T & operator[](int index) const { return std::vector<T>::operator[](index); }
 
 };
 
-class StdString {
+class StdString : private std::string {
 
 public:
-    std::string string;
-
-    StdString() { }
-    StdString(const char *characters, int length) : string(characters, (size_t) length) { }
-    int length() const { return (int) string.size(); }
-    explicit operator const char *() const { return string.c_str(); }
+    inline StdString() { }
+    inline StdString(const char *characters, int length) : std::string(characters, (size_t) length) { }
+    inline int length() const { return (int) std::string::size(); }
+    inline explicit operator const char *() const { return std::string::c_str(); }
 
 };
 
@@ -39,9 +35,5 @@ typedef StdList<unsigned char> StdByteArray;
 
 template <typename REAL>
 using StdArteryFont = ArteryFont<REAL, StdList, StdByteArray, StdString>;
-template <typename REAL>
-using StdFontVariant = FontVariant<REAL, StdList, StdString>;
-using StdImage = Image<StdByteArray, StdString>;
-using StdAppendix = Appendix<StdByteArray, StdString>;
 
 }

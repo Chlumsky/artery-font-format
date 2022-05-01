@@ -7,10 +7,13 @@
 
 namespace artery_font {
 
-template <int (*READ)(void *, int, void *), typename REAL, template <typename> class LIST, class BYTE_ARRAY, class STRING>
+typedef int ReadFunction(void *dst, int limit, void *userData);
+typedef int WriteFunction(const void *src, int length, void *userData);
+
+template <ReadFunction READ, typename REAL, template <typename> class LIST, class BYTE_ARRAY, class STRING>
 bool decode(ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData);
 
-template <int (*WRITE)(const void *, int, void *), typename REAL, template <typename> class LIST, class BYTE_ARRAY, class STRING>
+template <WriteFunction WRITE, typename REAL, template <typename> class LIST, class BYTE_ARRAY, class STRING>
 bool encode(const ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData);
 
 }

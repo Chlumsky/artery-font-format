@@ -81,11 +81,11 @@ template <typename REAL>
 uint32 realTypeCode();
 
 template <>
-uint32 realTypeCode<float>() {
+inline uint32 realTypeCode<float>() {
     return 0x14u;
 }
 template <>
-uint32 realTypeCode<double>() {
+inline uint32 realTypeCode<double>() {
     return 0x18u;
 }
 
@@ -105,18 +105,18 @@ uint32 paddedStringLength(const STRING &str) {
 
 #ifndef __BIG_ENDIAN__
 
-template <int (*READ)(void *, int, void *), typename REAL, template <typename> class LIST, class BYTE_ARRAY, class STRING>
+template <ReadFunction READ, typename REAL, template <typename> class LIST, class BYTE_ARRAY, class STRING>
 bool decode(ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData) {
     uint32 totalLength = 0;
     uint32 prevLength = 0;
     uint32 checksum = crc32Init();
     byte dump[4];
     #define ARTERY_FONT_DECODE_READ(target, len) { \
-        if (READ((void *) (target), (len), userData) != (len)) \
+        if (READ((target), (len), userData) != int(len)) \
             return false; \
         totalLength += (len); \
         for (int i = 0; i < int(len); ++i) \
-            checksum = crc32Update(checksum, ((const byte *) (const void *) (target))[i]); \
+            checksum = crc32Update(checksum, reinterpret_cast<const byte *>(target)[i]); \
     }
     #define ARTERY_FONT_DECODE_REALIGN() { \
         if (totalLength&0x03u) { \
@@ -129,7 +129,7 @@ bool decode(ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData) {
             LIST<char> characters((len)+1); \
             ARTERY_FONT_DECODE_READ((char *) characters, (len)+1); \
             ((char *) characters)[len] = '\0'; \
-            (str) = STRING((const char *) characters, uint32(len)); \
+            (str) = STRING((const char *) characters, int(len)); \
             ARTERY_FONT_DECODE_REALIGN(); \
         } else \
             (str) = STRING(); \
@@ -156,8 +156,8 @@ bool decode(ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData) {
         imageCount = header.imageCount;
         appendixCount = header.appendixCount;
         font.variants = LIST<FontVariant<REAL, LIST, STRING> >(header.variantCount);
-        font.images = LIST<Image<BYTE_ARRAY, STRING> >(header.imageCount);
-        font.appendices = LIST<Appendix<BYTE_ARRAY, STRING> >(header.appendixCount);
+        font.images = LIST<FontImage<BYTE_ARRAY, STRING> >(header.imageCount);
+        font.appendices = LIST<FontAppendix<BYTE_ARRAY, STRING> >(header.appendixCount);
         variantsLength = header.variantsLength;
         imagesLength = header.imagesLength;
         appendicesLength = header.appendicesLength;
@@ -187,7 +187,7 @@ bool decode(ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData) {
     prevLength = totalLength;
     // Read images
     for (int i = 0; i < imageCount; ++i) {
-        Image<BYTE_ARRAY, STRING> &image = font.images[i];
+        FontImage<BYTE_ARRAY, STRING> &image = font.images[i];
         internal::ImageHeader header;
         ARTERY_FONT_DECODE_READ(&header, sizeof(header));
         image.flags = header.flags;
@@ -211,7 +211,7 @@ bool decode(ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData) {
     prevLength = totalLength;
     // Read appendices
     for (int i = 0; i < appendixCount; ++i) {
-        Appendix<BYTE_ARRAY, STRING> &appendix = font.appendices[i];
+        FontAppendix<BYTE_ARRAY, STRING> &appendix = font.appendices[i];
         internal::AppendixHeader header;
         ARTERY_FONT_DECODE_READ(&header, sizeof(header));
         ARTERY_FONT_DECODE_READ_STRING(appendix.metadata, header.metadataLength);
@@ -228,9 +228,9 @@ bool decode(ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData) {
         ARTERY_FONT_DECODE_READ(&footer, sizeof(footer)-sizeof(footer.checksum));
         if (footer.magicNo != ARTERY_FONT_FOOTER_MAGIC_NO)
             return false;
-        uint32 prevChecksum = checksum;
+        uint32 finalChecksum = checksum;
         ARTERY_FONT_DECODE_READ(&footer.checksum, sizeof(footer.checksum));
-        if (footer.checksum != prevChecksum)
+        if (footer.checksum != finalChecksum)
             return false;
         if (totalLength != footer.totalLength)
             return false;
@@ -241,17 +241,17 @@ bool decode(ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData) {
     #undef ARTERY_FONT_DECODE_READ_STRING
 }
 
-template <int (*WRITE)(const void *, int, void *), typename REAL, template <typename> class LIST, class BYTE_ARRAY, class STRING>
+template <WriteFunction WRITE, typename REAL, template <typename> class LIST, class BYTE_ARRAY, class STRING>
 bool encode(const ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userData) {
     uint32 totalLength = 0;
     uint32 checksum = crc32Init();
     const byte padding[4] = { };
     #define ARTERY_FONT_ENCODE_WRITE(data, len) { \
-        if (WRITE((const void *) (data), (len), userData) != (len)) \
+        if (WRITE((data), (len), userData) != int(len)) \
             return false; \
         totalLength += (len); \
         for (int i = 0; i < int(len); ++i) \
-            checksum = crc32Update(checksum, ((const byte *) (const void *) (data))[i]); \
+            checksum = crc32Update(checksum, reinterpret_cast<const byte *>(data)[i]); \
     }
     #define ARTERY_FONT_ENCODE_REALIGN() { \
         if (totalLength&0x03u) { \
@@ -297,13 +297,13 @@ bool encode(const ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userDa
             header.variantsLength += variant.kernPairs.length()*sizeof(KernPair<REAL>);
         }
         for (int i = 0; i < imageCount; ++i) {
-            const Image<BYTE_ARRAY, STRING> &image = font.images[i];
+            const FontImage<BYTE_ARRAY, STRING> &image = font.images[i];
             header.imagesLength += sizeof(internal::ImageHeader);
             header.imagesLength += internal::paddedStringLength(image.metadata);
             header.imagesLength += internal::paddedLength(image.data.length());
         }
         for (int i = 0; i < appendixCount; ++i) {
-            const Appendix<BYTE_ARRAY, STRING> &appendix = font.appendices[i];
+            const FontAppendix<BYTE_ARRAY, STRING> &appendix = font.appendices[i];
             header.appendicesLength += sizeof(internal::AppendixHeader);
             header.appendicesLength += internal::paddedStringLength(appendix.metadata);
             header.appendicesLength += internal::paddedLength(appendix.data.length());
@@ -335,7 +335,7 @@ bool encode(const ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userDa
     }
     // Write images
     for (int i = 0; i < imageCount; ++i) {
-        const Image<BYTE_ARRAY, STRING> &image = font.images[i];
+        const FontImage<BYTE_ARRAY, STRING> &image = font.images[i];
         internal::ImageHeader header;
         header.flags = image.flags;
         header.encoding = (uint32) image.encoding;
@@ -358,7 +358,7 @@ bool encode(const ArteryFont<REAL, LIST, BYTE_ARRAY, STRING> &font, void *userDa
     }
     // Write appendices
     for (int i = 0; i < appendixCount; ++i) {
-        const Appendix<BYTE_ARRAY, STRING> &appendix = font.appendices[i];
+        const FontAppendix<BYTE_ARRAY, STRING> &appendix = font.appendices[i];
         internal::AppendixHeader header;
         header.metadataLength = appendix.metadata.length();
         header.dataLength = appendix.data.length();
