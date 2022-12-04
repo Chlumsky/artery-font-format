@@ -16,8 +16,8 @@ public:
     inline int length() const { return (int) std::vector<T>::size(); }
     inline explicit operator T *() { return std::vector<T>::data(); }
     inline explicit operator const T *() const { return std::vector<T>::data(); }
-    inline T & operator[](int index) { return std::vector<T>::operator[](index); }
-    inline const T & operator[](int index) const { return std::vector<T>::operator[](index); }
+    inline T &operator[](int index) { return std::vector<T>::operator[](index); }
+    inline const T &operator[](int index) const { return std::vector<T>::operator[](index); }
 
 };
 
