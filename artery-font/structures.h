@@ -43,7 +43,9 @@ struct FontVariant {
         REAL ascender, descender;
         REAL lineHeight;
         REAL underlineY, underlineThickness;
-        REAL reserved[24];
+        // In pixels:
+        REAL distanceRangeMiddle;
+        REAL reserved[23];
     } metrics;
     STRING name;
     STRING metadata;
